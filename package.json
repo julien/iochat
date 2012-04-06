@@ -1,6 +1,6 @@
 {
     "name": "chat"
-  , "node": "0.6.12",
+  , "node": "0.6.12"
   , "author": "jcastelain@gmail.com"
   , "version": "0.0.1"
   , "private": false
