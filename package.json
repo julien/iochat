@@ -1,0 +1,12 @@
+{
+    "name": "chat"
+  , "node": "0.6.12",
+  , "author": "jcastelain@gmail.com"
+  , "version": "0.0.1"
+  , "private": false
+  , "dependencies": {
+      "express": "2.5.8"
+    , "express-coffee": ">= 0.0.9"
+    , "socket.io": ">= 0.9.4"
+  }
+}

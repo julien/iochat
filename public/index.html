@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>chat</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <link href="css/style.css" rel="stylesheet" type="text/css" />  
+  </head>
+  <body>
+    <div align="center">
+      <div class="chat">
+        <textarea id="incoming" maxlength="0"></textarea><br />
+        <input type="text" id="outgoing" maxlength="140"></input>
+        <span id="total">Connected clients 0</span><select id="users"></select>
+      </div>
+      <pre class="commands">
+      available commands:
+      /allow username  (allow messages from username)
+      /ignore username (ignore messages from username)
+      </pre>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/javascripts/libs/underscore.js"></script>
+    <script src="/javascripts/app.js"></script>
+    <script>init();</script>
+
+  </body>
+</html>
+
