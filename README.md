@@ -2,13 +2,13 @@
 
 *A simple chat client and server built with*
 
-+[nodejs] (http://www.nodejs.org)
++ [nodejs] (http://www.nodejs.org)
   + [express] (http://www.expressjs.com)
   + [express-coffee] (https://github.com/Qard/express-coffee)
   + [socket.io] (http://socket.io)
 
-+[CoffeeScript] (http://coffeescript.org)
-+[underscore.js](http://documentcould.github.com/underscore)
++ [CoffeeScript] (http://coffeescript.org)
++ [underscore.js](http://documentcould.github.com/underscore)
 
 *Instructions*
 
