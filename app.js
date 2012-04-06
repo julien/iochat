@@ -74,9 +74,6 @@ function onClientRemove(id) {
 function onMessageSend(from, message, to) {
   // Return if we don't have a message
   if (!message) return;
-  
-  // Set a timestamp for this message
-  this.set('lastMessage', new Date().getTime());
 
   if (this.id === from.id) {
     if (!to) {
