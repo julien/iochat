@@ -1,5 +1,5 @@
 (function() {
-  var addLocalVideo, appendMessage, client, clientById, clientByName, commands, createVideoStream, init, localClient, localStream, onBroadcastClick, onClientAdd, onClientCount, onClientId, onClientList, onClientRemove, onConnect, onDisconnect, onMessageReceive, onOutgoingChange, onResize, onUserMediaError, onUserMediaSuccess, remoteClients, removeLocalVideo, root, sendMessage, socket, streaming;
+  var activeTab, appendMessage, canvas, client, clientById, clientByName, commands, draw, getTabs, inactiveTab, init, localClient, localStream, onAnchorClick, onCanvasMouseDown, onCanvasMouseUp, onClientAdd, onClientCount, onClientId, onClientList, onClientRemove, onConnect, onDisconnect, onMessageReceive, onOutgoingChange, remoteClients, root, sendMessage, socket, streaming, tablist, tablistItems, toggleElementVisibility;
 
   root = typeof window !== "undefined" && window !== null ? window : global;
 
@@ -36,6 +36,16 @@
   localClient = Object.create(client);
 
   remoteClients = [];
+
+  tablist = null;
+
+  tablistItems = null;
+
+  activeTab = null;
+
+  inactiveTab = null;
+
+  canvas = null;
 
   appendMessage = function(message) {
     var d, h, m, s;
@@ -74,6 +84,18 @@
     }
   };
 
+  getTabs = function() {
+    var className, item, _i, _len;
+    for (_i = 0, _len = tablistItems.length; _i < _len; _i++) {
+      item = tablistItems[_i];
+      className = item.getAttribute('class');
+      if (className === 'active') activeTab = item;
+      if (className === null || className === '') inactiveTab = item;
+    }
+    console.log('yeah', activeTab, inactiveTab);
+    return activeTab;
+  };
+
   sendMessage = function(message, to) {
     var arg, command, diff, matches, now, re;
     re = /^(\/\w+){1}(\W){1}(\w+){1}/;
@@ -98,6 +120,18 @@
     appendMessage("" + localClient.name + ": " + message);
     localClient.lastMessage = new Date().getTime();
     return socket.emit('messageSend', localClient, message, to);
+  };
+
+  toggleElementVisibility = function(element) {
+    var state;
+    if (!element) return;
+    state = element.style.display || element.style.visibility;
+    if (state === '' || state === !'none' || state === 'visible') {
+      element.style.display = 'none';
+    } else if (state === 'none' || state === 'hidden') {
+      element.style.display = '';
+    }
+    return element;
   };
 
   onConnect = function() {
@@ -185,60 +219,33 @@
     }
   };
 
-  addLocalVideo = function(stream) {
-    var video;
-    localStream = stream;
-    streaming = true;
-    video = createVideoStream(window.webkitURL.createObjectURL(stream));
-    video.setAttribute('id', "video-" + localClient.id);
-    broadcast.innerHTML = 'stop broadcasting';
-    return camlist.appendChild(video);
+  onAnchorClick = function(e) {
+    var li;
+    e.preventDefault();
+    li = e.currentTarget.parentNode;
+    if (li === activeTab) return;
+    activeTab.setAttribute('class', '');
+    inactiveTab.setAttribute('class', 'active');
+    getTabs();
+    toggleElementVisibility(chat);
+    toggleElementVisibility(whiteboard);
+    return e.currentTarget;
   };
 
-  removeLocalVideo = function() {
-    var video;
-    localStream.stop();
-    localStream = null;
-    streaming = false;
-    video = document.getElementById("video-" + localClient.id);
-    video.pause();
-    video.setAttribute('src', '');
-    broadcast.innerHTML = 'start broadcasting';
-    return camlist.removeChild(video);
+  onCanvasMouseDown = function(e) {
+    return console.log('canvas is active');
   };
 
-  onUserMediaSuccess = function(stream) {
-    console.log('success: ', stream);
-    return addLocalVideo(stream);
+  onCanvasMouseUp = function(e) {
+    return console.log('canvas is inactive');
   };
 
-  onUserMediaError = function(e) {
-    return console.log("onUserMediaError " + e);
-  };
-
-  onBroadcastClick = function(e) {
-    if (!localClient.streaming) {
-      if (navigator.webkitGetUserMedia) {
-        return navigator.webkitGetUserMedia('audio, video', onUserMediaSuccess, onUserMediaError);
-      } else {
-        return alert('Your browser does not support webRTC.');
-      }
-    } else {
-      return removeLocalVideo();
-    }
-  };
-
-  createVideoStream = function(stream) {
-    var video;
-    video = document.createElement('video');
-    video.setAttribute('autoplay', '');
-    video.setAttribute('controls', '');
-    video.setAttribute('src', stream);
-    return video;
+  draw = function() {
+    return console.log('drawing');
   };
 
   init = function() {
-    var incoming, outgoing, total, users;
+    var a, chat, child, incoming, outgoing, total, users, whiteboard, _i, _len;
     socket = io.connect('http://localhost');
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -253,19 +260,23 @@
     outgoing.onchange = onOutgoingChange;
     total = document.getElementById('total');
     users = document.getElementById('users');
-    onResize();
+    tablist = document.getElementsByClassName('nav')[0];
+    tablistItems = tablist.getElementsByTagName('li');
+    getTabs();
+    for (_i = 0, _len = tablistItems.length; _i < _len; _i++) {
+      child = tablistItems[_i];
+      a = child.getElementsByTagName('a')[0];
+      a.onclick = onAnchorClick;
+    }
+    chat = document.getElementById('chat');
+    whiteboard = document.getElementById('whiteboard');
+    toggleElementVisibility(whiteboard);
+    canvas = document.getElementById('canvas');
+    canvas.onmousedown = onCanvasMouseDown;
+    canvas.onmouseup = onCanvasMouseUp;
     return true;
   };
 
   root.init = init;
-
-  onResize = function(e) {
-    var h, incoming;
-    incoming = incoming || document.getElementById('incoming');
-    h = document.body.clientHeight;
-    return incoming.style.height = (h - 130) + 'px';
-  };
-
-  window.onresize = onResize;
 
 }).call(this);

@@ -3,29 +3,73 @@
   <head>
     <title>chat</title>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css" />  
+    <link href="css/bootstrap-responsive.min.css" rel="stylesheet" type="text/css" />  
     <link href="css/style.css" rel="stylesheet" type="text/css" />  
   </head>
   <body>
-    <div align="center">
-      <div class="chat">
-        <textarea id="incoming" maxlength="0"></textarea><br />
-        <input type="text" id="outgoing" maxlength="140"></input>
-        <span id="total">Connected clients 0</span>
-        &nbsp;|&nbsp;
-        <span>
-          Send a private message : 
-          <select id="users"></select>
-        </span>
+    <!-- navbar -->
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="/">A node.js/sockiet.io chat</a>
+        </div>
       </div>
-      <pre class="commands">
-      available commands:
-      /allow username  (allow messages from username)
-      /ignore username (ignore messages from username)
-      </pre>
+    </div>
+
+    <div class="container">
+      <header class="jumbotron masthead">
+        &nbsp;
+      </header>
+
+      <div class="chat">
+
+        <ul class="nav nav-tabs">
+          <li class="active">
+            <a href="#">Chat</a>
+          </li>
+          <li><a href="#">Whiteboard</a></li>
+        </ul>
+        
+
+        <div id="chat">
+          <div class="row">
+            <div class="span12">
+              <textarea id="incoming" maxlength="0"></textarea><br />
+            </div>
+            <div class="span12">
+              <input type="text" id="outgoing" maxlength="140"></input>
+            </div>  
+          </div>
+          
+          <div class="row">
+            <div class="span6" id="total">
+              Connected clients 0
+            </div>
+            <div class="span3">
+              Send a private message :
+              <select id="users"></select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="span12">
+              <pre>available commands: /allow username, /ignore username</pre>
+            </div>
+          </div>
+       </div>
+       
+        <div class="row" id="whiteboard">
+          <div class="span12">
+            <canvas id="canvas" class="well" style="width:94%;height:100%"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/javascripts/libs/underscore.js"></script>
+    <script src="/javascripts/libs/raf.js"></script>
     <script src="/javascripts/app.js"></script>
     <script>init();</script>
 

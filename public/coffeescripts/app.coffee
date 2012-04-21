@@ -28,6 +28,12 @@ commands = {
 }
 localClient = Object.create(client)
 remoteClients = []
+# references to dom
+tablist = null
+tablistItems = null
+activeTab = null
+inactiveTab = null
+canvas = null
 
 # helpers functions
 appendMessage = (message) ->
@@ -60,6 +66,15 @@ clientByName = (name) ->
     return client if client.name is name
 
 
+getTabs = ->
+  for item in tablistItems
+    className = item.getAttribute('class')
+    activeTab = item if className is 'active'
+    inactiveTab = item if className is null or className is ''
+
+  console.log('yeah', activeTab, inactiveTab)
+  
+  return activeTab
 
 sendMessage = (message, to) ->
   re = /^(\/\w+){1}(\W){1}(\w+){1}/
@@ -83,6 +98,17 @@ sendMessage = (message, to) ->
   appendMessage "#{localClient.name}: #{message}"
   localClient.lastMessage = new Date().getTime()
   socket.emit 'messageSend', localClient, message, to
+
+toggleElementVisibility = (element) ->
+  return unless element
+  state = element.style.display || element.style.visibility
+
+  if state is '' or state is not 'none' or state is 'visible'
+    element.style.display = 'none'
+  else if state is 'none' or state is 'hidden'
+    element.style.display = ''
+
+  element
 
 
 # event listeners
@@ -157,58 +183,29 @@ onOutgoingChange = (event) ->
     input.value = ''
 
 
-addLocalVideo = (stream) ->
-  localStream = stream
-  streaming = true
+onAnchorClick = (e) ->
+  e.preventDefault()
+  li = e.currentTarget.parentNode
+  return if li is activeTab
+
+  activeTab.setAttribute 'class', ''
+  inactiveTab.setAttribute 'class', 'active'
+  getTabs()
+  toggleElementVisibility chat
+  toggleElementVisibility whiteboard
+  return e.currentTarget
+
+
+onCanvasMouseDown = (e) ->
+  console.log 'canvas is active'
+
+
+onCanvasMouseUp = (e) ->
+  console.log 'canvas is inactive'
+
   
-  video = createVideoStream(window.webkitURL.createObjectURL(stream))
-  video.setAttribute 'id', "video-#{localClient.id}"
-  broadcast.innerHTML = 'stop broadcasting'
-  camlist.appendChild video
- 
-removeLocalVideo = ->
-  localStream.stop()
-  localStream = null
-  streaming = false
-  
-
-  video = document.getElementById "video-#{localClient.id}"
-  video.pause()
-  video.setAttribute 'src', ''
-
-  broadcast.innerHTML = 'start broadcasting'
-  camlist.removeChild video
-
-
-
-onUserMediaSuccess = (stream) ->
-  console.log 'success: ', stream
-  addLocalVideo stream
-  # createPeerConnection()
-
-
-onUserMediaError = (e) ->
-  console.log "onUserMediaError #{e}"
-
-
-onBroadcastClick = (e) ->
-  unless localClient.streaming
-    # webkit only here
-    if navigator.webkitGetUserMedia
-      navigator.webkitGetUserMedia 'audio, video', onUserMediaSuccess, onUserMediaError
-    else
-      alert 'Your browser does not support webRTC.'
-  else
-   removeLocalVideo()
-
-
-createVideoStream = (stream) ->
-  video = document.createElement 'video'
-  video.setAttribute 'autoplay', ''
-  video.setAttribute 'controls', ''
-  video.setAttribute 'src', stream
-  video
-
+draw = ->
+  console.log 'drawing'
 # bootstrap
 init = ->
   # socket event listeners
@@ -230,23 +227,30 @@ init = ->
 
   total = document.getElementById 'total'
   users = document.getElementById 'users'
+
+  # tabs
+  tablist = document.getElementsByClassName('nav')[0]
+  tablistItems = tablist.getElementsByTagName 'li'
   
-  onResize()
+  getTabs()
+  
+  for child in tablistItems
+    a = child.getElementsByTagName('a')[0]
+    a.onclick = onAnchorClick
+  
+
+  # chat and whiteboard "fake" screen
+  chat = document.getElementById 'chat'
+  whiteboard = document.getElementById 'whiteboard'
+  toggleElementVisibility whiteboard
+
+  canvas = document.getElementById 'canvas'
+  canvas.onmousedown = onCanvasMouseDown
+  canvas.onmouseup = onCanvasMouseUp
+
 
   true
 
 
 root.init = init
-
-onResize = (e) ->
-  incoming = incoming or document.getElementById 'incoming'
-  h = document.body.clientHeight
-  incoming.style.height = (h - 130) + 'px'
-
-
-
-
-# resize window event listener
-window.onresize = onResize
-
 
