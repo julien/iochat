@@ -1,5 +1,5 @@
 (function() {
-  var activeTab, appendMessage, canvas, client, clientById, clientByName, commands, draw, getTabs, inactiveTab, init, localClient, localStream, onAnchorClick, onCanvasMouseDown, onCanvasMouseUp, onClientAdd, onClientCount, onClientId, onClientList, onClientRemove, onConnect, onDisconnect, onMessageReceive, onOutgoingChange, remoteClients, root, sendMessage, socket, streaming, tablist, tablistItems, toggleElementVisibility;
+  var activeTab, addDrawPoint, animationId, appendMessage, canvas, client, clientById, clientByName, commands, context, draw, drawPoints, drawing, getTabs, inactiveTab, init, localClient, localStream, onAnchorClick, onCanvasMouseDown, onCanvasMouseMove, onCanvasMouseUp, onClientAdd, onClientCount, onClientId, onClientList, onClientRemove, onConnect, onDisconnect, onMessageReceive, onOutgoingChange, remoteClients, root, sendMessage, socket, streaming, tablist, tablistItems, toggleElementVisibility;
 
   root = typeof window !== "undefined" && window !== null ? window : global;
 
@@ -37,15 +37,11 @@
 
   remoteClients = [];
 
-  tablist = null;
+  tablist = tablistItems = activeTab = inactiveTab = canvas = context = animationId = null;
 
-  tablistItems = null;
+  drawing = false;
 
-  activeTab = null;
-
-  inactiveTab = null;
-
-  canvas = null;
+  drawPoints = [];
 
   appendMessage = function(message) {
     var d, h, m, s;
@@ -92,8 +88,7 @@
       if (className === 'active') activeTab = item;
       if (className === null || className === '') inactiveTab = item;
     }
-    console.log('yeah', activeTab, inactiveTab);
-    return activeTab;
+    return [activeTab, inactiveTab];
   };
 
   sendMessage = function(message, to) {
@@ -132,6 +127,16 @@
       element.style.display = '';
     }
     return element;
+  };
+
+  addDrawPoint = function(x, y, drag) {
+    if (drag == null) drag = false;
+    drawPoints.push({
+      x: x,
+      y: y,
+      drag: drag
+    });
+    return drawPoints;
   };
 
   onConnect = function() {
@@ -233,15 +238,47 @@
   };
 
   onCanvasMouseDown = function(e) {
-    return console.log('canvas is active');
+    console.log('canvas is active');
+    drawing = true;
+    addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop);
+    animationId = window.requestAnimationFrame(draw);
+    return canvas.onmousemove = onCanvasMouseMove;
   };
 
   onCanvasMouseUp = function(e) {
-    return console.log('canvas is inactive');
+    console.log('canvas is inactive');
+    drawing = false;
+    window.cancelRequestAnimationFrame(animationId);
+    return canvas.onmousemove = null;
+  };
+
+  onCanvasMouseMove = function(e) {
+    console.log('mouse move', e.pageX, e.pageY);
+    if (drawing) {
+      addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop, true);
+    }
+    return draw();
   };
 
   draw = function() {
-    return console.log('drawing');
+    var i, point, _len;
+    if (!drawing) return;
+    console.log('drawing');
+    canvas.width = canvas.width;
+    context.strokeStyle = '#df4b26';
+    for (i = 0, _len = drawPoints.length; i < _len; i++) {
+      point = drawPoints[i];
+      context.beginPath();
+      if (drawPoints[i].drag) {
+        context.moveTo(drawPoints[i - 1].x, drawPoints[i - 1].y);
+      } else {
+        context.moveTo(drawPoints[i].x, drawPoints[i].y);
+      }
+      context.lineTo(drawPoints[i].x, drawPoints[i].y);
+      context.closePath();
+      context.stroke();
+    }
+    return animationId = window.requestAnimationFrame(draw);
   };
 
   init = function() {
@@ -274,6 +311,7 @@
     canvas = document.getElementById('canvas');
     canvas.onmousedown = onCanvasMouseDown;
     canvas.onmouseup = onCanvasMouseUp;
+    context = canvas.getContext('2d');
     return true;
   };
 

@@ -12,6 +12,7 @@ button{padding:4px}
 #users{min-width:140px}
  */
 body{overlow-x:hidden}
+canvas{cursor:pointer}
 textarea{resize:none;margin:0 0 10px 0}
 .chat{display:block;width:97%}
 #incoming{min-height:200px}

@@ -29,11 +29,9 @@ commands = {
 localClient = Object.create(client)
 remoteClients = []
 # references to dom
-tablist = null
-tablistItems = null
-activeTab = null
-inactiveTab = null
-canvas = null
+tablist = tablistItems = activeTab = inactiveTab = canvas = context = animationId = null
+drawing = false
+drawPoints = []
 
 # helpers functions
 appendMessage = (message) ->
@@ -72,9 +70,7 @@ getTabs = ->
     activeTab = item if className is 'active'
     inactiveTab = item if className is null or className is ''
 
-  console.log('yeah', activeTab, inactiveTab)
-  
-  return activeTab
+  return [activeTab, inactiveTab]
 
 sendMessage = (message, to) ->
   re = /^(\/\w+){1}(\W){1}(\w+){1}/
@@ -110,6 +106,9 @@ toggleElementVisibility = (element) ->
 
   element
 
+addDrawPoint = (x, y, drag = false) ->
+  drawPoints.push({x: x, y: y, drag: drag})
+  return drawPoints
 
 # event listeners
 onConnect = ->
@@ -198,14 +197,44 @@ onAnchorClick = (e) ->
 
 onCanvasMouseDown = (e) ->
   console.log 'canvas is active'
-
+  drawing = true
+  addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop)
+  animationId = window.requestAnimationFrame draw
+  canvas.onmousemove = onCanvasMouseMove
 
 onCanvasMouseUp = (e) ->
   console.log 'canvas is inactive'
-
+  drawing = false
+  window.cancelRequestAnimationFrame animationId
+  canvas.onmousemove = null
   
+onCanvasMouseMove = (e) ->
+  console.log 'mouse move', e.pageX, e.pageY
+  addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop, true) if drawing
+  draw()
+
+
 draw = ->
+  return unless drawing
   console.log 'drawing'
+  canvas.width = canvas.width
+  context.strokeStyle = '#df4b26'
+
+
+  for point, i in drawPoints
+    context.beginPath()
+    if drawPoints[i].drag
+      context.moveTo(drawPoints[i - 1].x , drawPoints[i - 1].y)
+    else
+      context.moveTo(drawPoints[i].x, drawPoints[i].y)
+
+    context.lineTo(drawPoints[i].x, drawPoints[i].y)
+    context.closePath()
+    context.stroke()
+
+  animationId = window.requestAnimationFrame draw
+
+
 # bootstrap
 init = ->
   # socket event listeners
@@ -248,6 +277,7 @@ init = ->
   canvas.onmousedown = onCanvasMouseDown
   canvas.onmouseup = onCanvasMouseUp
 
+  context = canvas.getContext '2d'
 
   true
 
