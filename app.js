@@ -88,12 +88,24 @@ function onMessageSend(from, message, to) {
   }
 }
 
+function onStreamStart(stream, videoSrc) {
+  console.log('onStreamStart', stream, videoSrc);
+  var client = clientById(this.id);
+  this.broadcast.emit('streamStart', client, stream, videoSrc);
+}
+
+function onStreamStop(id, stream) {
+  console.log('onStreamStop', id, stream);
+}
+
 function onConnect(client) {
   // console.log('onConnect', client.id);
   client.on('disconnect', onDisconnect);
   client.on('clientAdd', onClientAdd);
   client.on('clientRemove', onClientRemove);
   client.on('messageSend', onMessageSend);
+  client.on('streamStart', onStreamStart);
+  client.on('streamStop', onStreamStop);
 }
 
 function onDisconnect() {

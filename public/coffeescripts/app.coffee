@@ -10,18 +10,20 @@ client = {
   bannedClients: {}
   lastMessage: null
 }
+
+localStream = null
+streaming = false
+
 commands = {
   '/allow': (user) ->
     unless localClient.name is user
       client = clientByName user
       localClient.bannedClients[client.id] = false if client
-      # console.log "Allowing messages from: #{client.name}"
     
   '/ignore': (user) ->
     unless localClient.name is user
       client = clientByName user
       localClient.bannedClients[client.id] = true if client
-      # console.log "Ignoring messages from: #{client.name}"
       
 }
 localClient = Object.create(client)
@@ -60,15 +62,9 @@ clientByName = (name) ->
 
 
 sendMessage = (message, to) ->
-  # console.log 'onMessageSend'
-  # console.log 'From: ', localClient.name
-  # console.log 'Message: ', message
-  # console.log 'To: ', to if to
-
   re = /^(\/\w+){1}(\W){1}(\w+){1}/
   matches = re.exec(message)
   if matches and matches.length >= 4
-    # console.log 'Got a command match:', matches
     command = matches[1]
     arg  = matches[3]
     
@@ -78,7 +74,6 @@ sendMessage = (message, to) ->
       return
 
   if localClient.lastMessage
-    # console.log 'Last message:', localClient.lastMessage
     now = new Date().getTime()
     diff = (now - localClient.lastMessage) / 1000
     if diff < 1
@@ -91,23 +86,17 @@ sendMessage = (message, to) ->
 
 
 # event listeners
-onConnect = () ->
+onConnect = ->
   socket.emit('clientAdd', localClient)
 
-onDisconnect = () ->
-  # console.log 'onDisconnect'
-  appendMessage "You have been disconnected from the server."
+onDisconnect = ->
+  appendMessage 'You have been disconnected from the server.'
   
 onClientAdd = (data) ->
-  # console.log 'onClientAdd', data
   appendMessage "... #{data.name} joined the chat ..."
   remoteClients.push { id: data.id, name: data.name }
 
 onClientCount = (numClients) ->
-  # console.log 'onClientCount'
-  # console.log 'Total clients: ' , numClients
-  # console.log 'Remote Clients: ', remoteClients
-
   total.innerHTML = "Connected clients #{numClients}"
 
   for child in users.children
@@ -123,7 +112,6 @@ onClientCount = (numClients) ->
 
 
 onClientId = (client) ->
-  # console.log 'onClientId', client
   appendMessage "Welcome, #{client.name}"
   localClient.id = client.id
   localClient.name = client.name
@@ -136,7 +124,6 @@ onClientList = (clients) ->
   onClientCount clients.length
 
 onClientRemove = (data) ->
-  # console.log 'onClientRemove', data
   client = clientById(data.id)
   return unless client
   appendMessage "#{client.name} left the chat"
@@ -144,10 +131,6 @@ onClientRemove = (data) ->
 
 
 onMessageReceive = (from, message, type) ->
-  # console.log 'onMessageReceive'
-  # console.log 'From: ', from
-  # console.log 'Message: ', message
-
   if not localClient.bannedClients[from.id]
     if type and type is 'private'
       unless localClient.trustedClients[from.id]
@@ -163,7 +146,6 @@ onMessageReceive = (from, message, type) ->
 
 
 onOutgoingChange = (event) ->
-  # console.log 'outgoingChange', event
   input = event.currentTarget
   val = input.value
 
@@ -173,9 +155,62 @@ onOutgoingChange = (event) ->
   if val.length > 0
     sendMessage(val, to)
     input.value = ''
+
+
+addLocalVideo = (stream) ->
+  localStream = stream
+  streaming = true
   
+  video = createVideoStream(window.webkitURL.createObjectURL(stream))
+  video.setAttribute 'id', "video-#{localClient.id}"
+  broadcast.innerHTML = 'stop broadcasting'
+  camlist.appendChild video
+ 
+removeLocalVideo = ->
+  localStream.stop()
+  localStream = null
+  streaming = false
+  
+
+  video = document.getElementById "video-#{localClient.id}"
+  video.pause()
+  video.setAttribute 'src', ''
+
+  broadcast.innerHTML = 'start broadcasting'
+  camlist.removeChild video
+
+
+
+onUserMediaSuccess = (stream) ->
+  console.log 'success: ', stream
+  addLocalVideo stream
+  # createPeerConnection()
+
+
+onUserMediaError = (e) ->
+  console.log "onUserMediaError #{e}"
+
+
+onBroadcastClick = (e) ->
+  unless localClient.streaming
+    # webkit only here
+    if navigator.webkitGetUserMedia
+      navigator.webkitGetUserMedia 'audio, video', onUserMediaSuccess, onUserMediaError
+    else
+      alert 'Your browser does not support webRTC.'
+  else
+   removeLocalVideo()
+
+
+createVideoStream = (stream) ->
+  video = document.createElement 'video'
+  video.setAttribute 'autoplay', ''
+  video.setAttribute 'controls', ''
+  video.setAttribute 'src', stream
+  video
+
 # bootstrap
-init = () ->
+init = ->
   # socket event listeners
   socket = io.connect 'http://localhost'
   socket.on 'connect', onConnect
@@ -189,13 +224,29 @@ init = () ->
   socket.on 'messageReceive', onMessageReceive
 
   # ui members and event listeners
-  incoming = document.querySelector '#incoming'
-  outgoing = document.querySelector '#outgoing'
-  outgoing.addEventListener 'change', onOutgoingChange, false
-  total = document.querySelector '#total'
-  users = document.querySelector '#users'
+  incoming = document.getElementById 'incoming'
+  outgoing = document.getElementById 'outgoing'
+  outgoing.onchange = onOutgoingChange
+
+  total = document.getElementById 'total'
+  users = document.getElementById 'users'
+  
+  onResize()
+
+  true
 
 
 root.init = init
+
+onResize = (e) ->
+  incoming = incoming or document.getElementById 'incoming'
+  h = document.body.clientHeight
+  incoming.style.height = (h - 130) + 'px'
+
+
+
+
+# resize window event listener
+window.onresize = onResize
 
 

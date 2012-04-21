@@ -1,5 +1,5 @@
 (function() {
-  var appendMessage, client, clientById, clientByName, commands, init, localClient, onClientAdd, onClientCount, onClientId, onClientList, onClientRemove, onConnect, onDisconnect, onMessageReceive, onOutgoingChange, remoteClients, root, sendMessage, socket;
+  var addLocalVideo, appendMessage, client, clientById, clientByName, commands, createVideoStream, init, localClient, localStream, onBroadcastClick, onClientAdd, onClientCount, onClientId, onClientList, onClientRemove, onConnect, onDisconnect, onMessageReceive, onOutgoingChange, onResize, onUserMediaError, onUserMediaSuccess, remoteClients, removeLocalVideo, root, sendMessage, socket, streaming;
 
   root = typeof window !== "undefined" && window !== null ? window : global;
 
@@ -13,6 +13,10 @@
     bannedClients: {},
     lastMessage: null
   };
+
+  localStream = null;
+
+  streaming = false;
 
   commands = {
     '/allow': function(user) {
@@ -101,7 +105,7 @@
   };
 
   onDisconnect = function() {
-    return appendMessage("You have been disconnected from the server.");
+    return appendMessage('You have been disconnected from the server.');
   };
 
   onClientAdd = function(data) {
@@ -181,6 +185,58 @@
     }
   };
 
+  addLocalVideo = function(stream) {
+    var video;
+    localStream = stream;
+    streaming = true;
+    video = createVideoStream(window.webkitURL.createObjectURL(stream));
+    video.setAttribute('id', "video-" + localClient.id);
+    broadcast.innerHTML = 'stop broadcasting';
+    return camlist.appendChild(video);
+  };
+
+  removeLocalVideo = function() {
+    var video;
+    localStream.stop();
+    localStream = null;
+    streaming = false;
+    video = document.getElementById("video-" + localClient.id);
+    video.pause();
+    video.setAttribute('src', '');
+    broadcast.innerHTML = 'start broadcasting';
+    return camlist.removeChild(video);
+  };
+
+  onUserMediaSuccess = function(stream) {
+    console.log('success: ', stream);
+    return addLocalVideo(stream);
+  };
+
+  onUserMediaError = function(e) {
+    return console.log("onUserMediaError " + e);
+  };
+
+  onBroadcastClick = function(e) {
+    if (!localClient.streaming) {
+      if (navigator.webkitGetUserMedia) {
+        return navigator.webkitGetUserMedia('audio, video', onUserMediaSuccess, onUserMediaError);
+      } else {
+        return alert('Your browser does not support webRTC.');
+      }
+    } else {
+      return removeLocalVideo();
+    }
+  };
+
+  createVideoStream = function(stream) {
+    var video;
+    video = document.createElement('video');
+    video.setAttribute('autoplay', '');
+    video.setAttribute('controls', '');
+    video.setAttribute('src', stream);
+    return video;
+  };
+
   init = function() {
     var incoming, outgoing, total, users;
     socket = io.connect('http://localhost');
@@ -192,13 +248,24 @@
     socket.on('clientList', onClientList);
     socket.on('clientRemove', onClientRemove);
     socket.on('messageReceive', onMessageReceive);
-    incoming = document.querySelector('#incoming');
-    outgoing = document.querySelector('#outgoing');
-    outgoing.addEventListener('change', onOutgoingChange, false);
-    total = document.querySelector('#total');
-    return users = document.querySelector('#users');
+    incoming = document.getElementById('incoming');
+    outgoing = document.getElementById('outgoing');
+    outgoing.onchange = onOutgoingChange;
+    total = document.getElementById('total');
+    users = document.getElementById('users');
+    onResize();
+    return true;
   };
 
   root.init = init;
+
+  onResize = function(e) {
+    var h, incoming;
+    incoming = incoming || document.getElementById('incoming');
+    h = document.body.clientHeight;
+    return incoming.style.height = (h - 130) + 'px';
+  };
+
+  window.onresize = onResize;
 
 }).call(this);
