@@ -12,9 +12,10 @@ button{padding:4px}
 #users{min-width:140px}
  */
 body{overlow-x:hidden}
-canvas{cursor:pointer}
+canvas{border:1px solid #ccc}
 textarea{resize:none;margin:0 0 10px 0}
 .chat{display:block;width:97%}
+.jumbotron{margin: 30px 0 0 0}
 #incoming{min-height:200px}
 #incoming,#outgoing {width:100%;margin:0 0 10px 0;font-family:'Lucida Grande',Helvetica,Arial,sans-serif;font-size:12px;}
 /* .chat{display:block;width:98%;padding:4px} */

@@ -11,8 +11,6 @@ client = {
   lastMessage: null
 }
 
-localStream = null
-streaming = false
 
 commands = {
   '/allow': (user) ->
@@ -31,7 +29,8 @@ remoteClients = []
 # references to dom
 tablist = tablistItems = activeTab = inactiveTab = canvas = context = animationId = null
 drawing = false
-drawPoints = []
+drawPoints = remotePoints = []
+remotePointsIndex = 0
 
 # helpers functions
 appendMessage = (message) ->
@@ -192,47 +191,73 @@ onAnchorClick = (e) ->
   getTabs()
   toggleElementVisibility chat
   toggleElementVisibility whiteboard
+
+  # reset drawPoints?
+  drawPoints = []
+  if e.currentTarget.text is 'Whiteboard'
+    parent = canvas.parentNode
+    canvas.width = whiteboard.clientWidth
+    canvas.height = 400
+
   return e.currentTarget
 
 
 onCanvasMouseDown = (e) ->
-  console.log 'canvas is active'
   drawing = true
-  addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop)
-  animationId = window.requestAnimationFrame draw
   canvas.onmousemove = onCanvasMouseMove
+  addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop)
+  draw()
 
 onCanvasMouseUp = (e) ->
-  console.log 'canvas is inactive'
-  drawing = false
-  window.cancelRequestAnimationFrame animationId
   canvas.onmousemove = null
-  
+  drawing = false
+  socket.emit 'drawPointsSend', drawPoints
+
 onCanvasMouseMove = (e) ->
-  console.log 'mouse move', e.pageX, e.pageY
-  addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop, true) if drawing
-  draw()
+  if drawing
+    addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop, true)
+    draw()
+  drawing
 
 
 draw = ->
   return unless drawing
-  console.log 'drawing'
   canvas.width = canvas.width
-  context.strokeStyle = '#df4b26'
 
+  context.strokeStyle = '#df4b26'
+  context.lineWidth = 5
 
   for point, i in drawPoints
     context.beginPath()
     if drawPoints[i].drag
       context.moveTo(drawPoints[i - 1].x , drawPoints[i - 1].y)
     else
-      context.moveTo(drawPoints[i].x, drawPoints[i].y)
+      context.moveTo(drawPoints[i].x - 1, drawPoints[i].y - 1)
 
     context.lineTo(drawPoints[i].x, drawPoints[i].y)
-    context.closePath()
     context.stroke()
+    context.closePath()
+    
+onDrawPointsReceive = (points) ->
+  remotePoints = points
+  remotePointsIndex = 0
+  drawRemotePoints()
 
-  animationId = window.requestAnimationFrame draw
+drawRemotePoints = ->
+  context.strokeStyle = '#00dd00'
+  context.lineWidth = 5
+
+  for point, i in remotePoints
+    context.beginPath()
+    if remotePoints[i].drag
+      context.moveTo(remotePoints[i - 1].x , remotePoints[i - 1].y)
+    else
+      context.moveTo(remotePoints[i].x - 1, remotePoints[i].y - 1)
+
+    context.lineTo(remotePoints[i].x, remotePoints[i].y)
+    context.stroke()
+    context.closePath()
+
 
 
 # bootstrap
@@ -248,6 +273,7 @@ init = ->
   socket.on 'clientList', onClientList
   socket.on 'clientRemove', onClientRemove
   socket.on 'messageReceive', onMessageReceive
+  socket.on 'drawPointsReceive', onDrawPointsReceive
 
   # ui members and event listeners
   incoming = document.getElementById 'incoming'
@@ -276,6 +302,7 @@ init = ->
   canvas = document.getElementById 'canvas'
   canvas.onmousedown = onCanvasMouseDown
   canvas.onmouseup = onCanvasMouseUp
+  #canvas.onmouseleave = onCanvasMouseUp
 
   context = canvas.getContext '2d'
 

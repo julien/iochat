@@ -1,5 +1,5 @@
 (function() {
-  var activeTab, addDrawPoint, animationId, appendMessage, canvas, client, clientById, clientByName, commands, context, draw, drawPoints, drawing, getTabs, inactiveTab, init, localClient, localStream, onAnchorClick, onCanvasMouseDown, onCanvasMouseMove, onCanvasMouseUp, onClientAdd, onClientCount, onClientId, onClientList, onClientRemove, onConnect, onDisconnect, onMessageReceive, onOutgoingChange, remoteClients, root, sendMessage, socket, streaming, tablist, tablistItems, toggleElementVisibility;
+  var activeTab, addDrawPoint, animationId, appendMessage, canvas, client, clientById, clientByName, commands, context, draw, drawPoints, drawRemotePoints, drawing, getTabs, inactiveTab, init, localClient, onAnchorClick, onCanvasMouseDown, onCanvasMouseMove, onCanvasMouseUp, onClientAdd, onClientCount, onClientId, onClientList, onClientRemove, onConnect, onDisconnect, onDrawPointsReceive, onMessageReceive, onOutgoingChange, remoteClients, remotePoints, remotePointsIndex, root, sendMessage, socket, tablist, tablistItems, toggleElementVisibility;
 
   root = typeof window !== "undefined" && window !== null ? window : global;
 
@@ -13,10 +13,6 @@
     bannedClients: {},
     lastMessage: null
   };
-
-  localStream = null;
-
-  streaming = false;
 
   commands = {
     '/allow': function(user) {
@@ -41,7 +37,9 @@
 
   drawing = false;
 
-  drawPoints = [];
+  drawPoints = remotePoints = [];
+
+  remotePointsIndex = 0;
 
   appendMessage = function(message) {
     var d, h, m, s;
@@ -225,7 +223,7 @@
   };
 
   onAnchorClick = function(e) {
-    var li;
+    var li, parent;
     e.preventDefault();
     li = e.currentTarget.parentNode;
     if (li === activeTab) return;
@@ -234,51 +232,82 @@
     getTabs();
     toggleElementVisibility(chat);
     toggleElementVisibility(whiteboard);
+    drawPoints = [];
+    if (e.currentTarget.text === 'Whiteboard') {
+      parent = canvas.parentNode;
+      canvas.width = whiteboard.clientWidth;
+      canvas.height = 400;
+    }
     return e.currentTarget;
   };
 
   onCanvasMouseDown = function(e) {
-    console.log('canvas is active');
     drawing = true;
+    canvas.onmousemove = onCanvasMouseMove;
     addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop);
-    animationId = window.requestAnimationFrame(draw);
-    return canvas.onmousemove = onCanvasMouseMove;
-  };
-
-  onCanvasMouseUp = function(e) {
-    console.log('canvas is inactive');
-    drawing = false;
-    window.cancelRequestAnimationFrame(animationId);
-    return canvas.onmousemove = null;
-  };
-
-  onCanvasMouseMove = function(e) {
-    console.log('mouse move', e.pageX, e.pageY);
-    if (drawing) {
-      addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop, true);
-    }
     return draw();
   };
 
+  onCanvasMouseUp = function(e) {
+    canvas.onmousemove = null;
+    drawing = false;
+    return socket.emit('drawPointsSend', drawPoints);
+  };
+
+  onCanvasMouseMove = function(e) {
+    if (drawing) {
+      addDrawPoint(e.pageX - canvas.offsetLeft, e.pageY - canvas.offsetTop, true);
+      draw();
+    }
+    return drawing;
+  };
+
   draw = function() {
-    var i, point, _len;
+    var i, point, _len, _results;
     if (!drawing) return;
-    console.log('drawing');
     canvas.width = canvas.width;
     context.strokeStyle = '#df4b26';
+    context.lineWidth = 5;
+    _results = [];
     for (i = 0, _len = drawPoints.length; i < _len; i++) {
       point = drawPoints[i];
       context.beginPath();
       if (drawPoints[i].drag) {
         context.moveTo(drawPoints[i - 1].x, drawPoints[i - 1].y);
       } else {
-        context.moveTo(drawPoints[i].x, drawPoints[i].y);
+        context.moveTo(drawPoints[i].x - 1, drawPoints[i].y - 1);
       }
       context.lineTo(drawPoints[i].x, drawPoints[i].y);
-      context.closePath();
       context.stroke();
+      _results.push(context.closePath());
     }
-    return animationId = window.requestAnimationFrame(draw);
+    return _results;
+  };
+
+  onDrawPointsReceive = function(points) {
+    remotePoints = points;
+    remotePointsIndex = 0;
+    return drawRemotePoints();
+  };
+
+  drawRemotePoints = function() {
+    var i, point, _len, _results;
+    context.strokeStyle = '#00dd00';
+    context.lineWidth = 5;
+    _results = [];
+    for (i = 0, _len = remotePoints.length; i < _len; i++) {
+      point = remotePoints[i];
+      context.beginPath();
+      if (remotePoints[i].drag) {
+        context.moveTo(remotePoints[i - 1].x, remotePoints[i - 1].y);
+      } else {
+        context.moveTo(remotePoints[i].x - 1, remotePoints[i].y - 1);
+      }
+      context.lineTo(remotePoints[i].x, remotePoints[i].y);
+      context.stroke();
+      _results.push(context.closePath());
+    }
+    return _results;
   };
 
   init = function() {
@@ -292,6 +321,7 @@
     socket.on('clientList', onClientList);
     socket.on('clientRemove', onClientRemove);
     socket.on('messageReceive', onMessageReceive);
+    socket.on('drawPointsReceive', onDrawPointsReceive);
     incoming = document.getElementById('incoming');
     outgoing = document.getElementById('outgoing');
     outgoing.onchange = onOutgoingChange;

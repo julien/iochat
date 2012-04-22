@@ -41,7 +41,6 @@ function clientById(id) {
 }
 // Event listeners
 function onClientAdd() {
-  // console.log('onClientAdd', this.id);
   var i, 
       l, 
       s,
@@ -88,28 +87,19 @@ function onMessageSend(from, message, to) {
   }
 }
 
-function onStreamStart(stream, videoSrc) {
-  console.log('onStreamStart', stream, videoSrc);
-  var client = clientById(this.id);
-  this.broadcast.emit('streamStart', client, stream, videoSrc);
-}
-
-function onStreamStop(id, stream) {
-  console.log('onStreamStop', id, stream);
+function onDrawPointsSend(points) {
+  this.broadcast.emit('drawPointsReceive', points);
 }
 
 function onConnect(client) {
-  // console.log('onConnect', client.id);
   client.on('disconnect', onDisconnect);
   client.on('clientAdd', onClientAdd);
   client.on('clientRemove', onClientRemove);
   client.on('messageSend', onMessageSend);
-  client.on('streamStart', onStreamStart);
-  client.on('streamStop', onStreamStop);
+  client.on('drawPointsSend', onDrawPointsSend);
 }
 
 function onDisconnect() {
-  // console.log('onDisconnect', this.id);
   var index,
     client = clientById(this.id);
   if (client) {
